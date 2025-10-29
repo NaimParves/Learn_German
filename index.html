@@ -1,44 +1,67 @@
-<!DOCTYPE html>
+# Create a mobile-responsive version that hides the "Unit" column on small screens
+from pathlib import Path
+
+html = r"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>German A1 Vocabulary — Goals (TTS Fix)</title>
+<title>German A1 Vocabulary — Goal Trainer (Mobile Responsive)</title>
 <style>
   :root{
     --bg:#0b1020;--card:#111833;--text:#e9ecf5;--muted:#9aa3b2;--accent:#6ea8fe;--border:#233055;
     --highlight:#1b2750;--btn:#0d1737;--yellow:#f1c40f;--red:#e74c3c;--green:#2ecc71;
   }
-  *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
-  background:linear-gradient(180deg,#0b1020 0%,#0e1430 100%);color:var(--text);padding:40px 20px;line-height:1.5}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+       background:linear-gradient(180deg,#0b1020 0%,#0e1430 100%);color:var(--text);
+       padding:40px 20px;line-height:1.5}
   .wrap{max-width:1200px;margin:0 auto}
-  header h1{font-size:2rem;margin:0 0 .25rem 0} header p{margin:0 0 1rem 0;color:var(--muted)}
+  header h1{font-size:2rem;margin:0 0 .25rem 0}
+  header p{margin:0 0 1rem 0;color:var(--muted)}
   .controls,.goalbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
   .select,.range,.btn,.num{background:var(--btn);border:1px solid var(--border);color:var(--text);
     border-radius:10px;padding:8px 10px;font-size:.95rem}
-  .range,.num{padding:6px 10px} .btn{cursor:pointer} .btn.primary{border-color:var(--accent)}
-  .btn.warn{border-color:var(--yellow)} .btn.danger{border-color:var(--red)}
+  .range,.num{padding:6px 10px}
+  .btn{cursor:pointer}
+  .btn.primary{border-color:var(--accent)}
+  .btn.warn{border-color:var(--yellow)}
+  .btn.danger{border-color:var(--red)}
   .badge{display:inline-block;padding:4px 10px;border-radius:999px;border:1px solid var(--border);background:#0c1430;color:var(--muted);font-size:.85rem}
   .card{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.35);overflow:hidden}
   .toolbar{display:flex;gap:12px;padding:12px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.02);align-items:center;position:sticky;top:0;z-index:5;backdrop-filter:blur(6px)}
   .toolbar input{flex:1;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:#0c1430;color:var(--text);outline:none}
   table{width:100%;border-collapse:collapse}
   thead th{text-align:left;font-weight:700;padding:14px;border-bottom:1px solid var(--border);background:#0d1737;position:sticky;top:110px;z-index:2}
-  thead th.iconcol{width:48px;text-align:center} thead th.goalcol{width:70px;text-align:center}
+  thead th.iconcol{width:48px;text-align:center}
+  thead th.goalcol{width:70px;text-align:center}
   tbody td{padding:12px 14px;border-bottom:1px solid #1c2547;vertical-align:middle}
-  tbody tr:nth-child(even) td{background:rgba(255,255,255,0.02)} tbody tr.highlight td{background:var(--highlight);transition:background .15s ease}
-  .german{font-weight:600} .unit{color:var(--muted)} .goalcb{transform:scale(1.2);cursor:pointer}
+  tbody tr:nth-child(even) td{background:rgba(255,255,255,0.02)}
+  tbody tr.highlight td{background:var(--highlight);transition:background .15s ease}
+  .german{font-weight:600}
+  .unit{color:var(--muted)}
+  .goalcb{transform:scale(1.2);cursor:pointer}
   .speak{display:inline-flex;align-items:center;justify-content:center;height:32px;width:32px;border-radius:10px;border:1px solid var(--border);background:#0c1430;cursor:pointer}
-  .speak:hover{outline:2px solid rgba(110,168,254,.25)} .speak svg{width:18px;height:18px;fill:var(--text)}
+  .speak:hover{outline:2px solid rgba(110,168,254,.25)}
+  .speak svg{width:18px;height:18px;fill:var(--text)}
   .note{background:#2d2a00;color:#fff;border:1px dashed #8a6d00;padding:10px;border-radius:10px;margin:10px 0}
   .ok{background:#062d16;border:1px solid #0b6e3d}
+
+  /* ===== Mobile responsiveness ===== */
+  @media (max-width: 640px){
+    .controls, .goalbar { gap: 6px; }
+    header h1 { font-size: 1.35rem; }
+    .toolbar span { display: none; } /* hide hint on very small screens */
+    /* Hide the Unit column (header + cells) */
+    .col-unit { display: none; }
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
     <h1>German A1 Vocabulary — Goal Trainer</h1>
-    <p class="badge">TTS-enhanced build with fallbacks</p>
+    <p class="badge">Mobile-friendly • Unit column hidden on small screens</p>
   </header>
 
   <div id="ttsWarn" class="note" style="display:none"></div>
@@ -46,7 +69,7 @@
   <div class="controls">
     <label for="voiceSelect">Voice:</label>
     <select id="voiceSelect" class="select" aria-label="Choose German voice"></select>
-    <button id="testVoice" class="btn primary" type="button" title="Test the selected voice">Test voice</button>
+    <button id="testVoice" class="btn primary" type="button">Test voice</button>
     <label for="rate">Rate:</label>
     <input id="rate" class="range" type="range" min="0.6" max="1.4" step="0.05" value="1">
     <span id="rateVal">1.00×</span>
@@ -78,7 +101,7 @@
     </div>
     <table id="vocab">
       <thead>
-        <tr><th class="goalcol">Goal ✓</th><th class="iconcol">🔊</th><th>German</th><th>English</th><th>Unit</th></tr>
+        <tr><th class="goalcol">Goal ✓</th><th class="iconcol">🔊</th><th>German</th><th>English</th><th class="col-unit">Unit</th></tr>
       </thead>
       <tbody></tbody>
     </table>
@@ -88,7 +111,6 @@
 </div>
 
 <script>
-  // Small sample; replace with the full list when ready.
    const data = [
       // ---------- Unit 1: numbers, greetings, meeting, origin, feelings, pronouns, question words ----------
       ["eins","one","Unit 1"],
@@ -599,11 +621,9 @@
       ["Wann ist er gestorben?","When did he die?","Unit 7"]
     ];
 
-
   const tbody = document.querySelector("tbody");
   const LS_KEY = "german_a1_goals_v1";
 
-  // --- LocalStorage ---
   function loadGoals(){ try {return JSON.parse(localStorage.getItem(LS_KEY))||{}} catch{ return {}; } }
   function saveGoals(m){ localStorage.setItem(LS_KEY, JSON.stringify(m)); }
   let goals = loadGoals();
@@ -622,7 +642,7 @@
       <td style="text-align:center"><button class="speak" type="button" data-text="${de}" aria-label="Pronounce: ${de}">${iconSVG()}</button></td>
       <td class="german">${de}</td>
       <td class="english">${en}</td>
-      <td class="unit">${unit}</td>
+      <td class="unit col-unit">${unit}</td>
     </tr>`;
   }
 
@@ -633,7 +653,6 @@
   }
   renderRows(data);
 
-  // Filter
   const input = document.getElementById("filter");
   input.addEventListener("input", e => {
     const q = e.target.value.toLowerCase().trim();
@@ -643,7 +662,7 @@
     renderRows(rows);
   });
 
-  // --- Robust TTS handling ---
+  // --- TTS (same robust loader as before) ---
   const voiceSelect = document.getElementById("voiceSelect");
   const testVoice = document.getElementById("testVoice");
   const rate = document.getElementById("rate"), pitch = document.getElementById("pitch");
@@ -651,15 +670,13 @@
   const stopAll = document.getElementById("stopAll");
   const ttsWarn = document.getElementById("ttsWarn");
 
-  let voices = [];
-  let currentVoice = null;
+  let voices = []; let currentVoice = null;
 
   function setWarn(html, ok=false){
     ttsWarn.style.display = "block";
     ttsWarn.className = "note" + (ok ? " ok" : "");
     ttsWarn.innerHTML = html;
   }
-
   function clearWarn(){ ttsWarn.style.display = "none"; }
 
   function listVoices(){
@@ -667,7 +684,7 @@
     voiceSelect.innerHTML = "";
     const german = voices.filter(v => (v.lang||"").toLowerCase().startsWith("de"));
     const others = voices.filter(v => !(v.lang||"").toLowerCase().startsWith("de"));
-    [...german, ...others].forEach(v => {
+    [...german,...others].forEach(v => {
       const opt = document.createElement("option");
       opt.value = v.name;
       opt.textContent = `${v.name} — ${v.lang}` + (german.includes(v) ? " (DE)" : "");
@@ -675,22 +692,14 @@
     });
     currentVoice = german[0] || voices[0] || null;
     if(currentVoice) voiceSelect.value = currentVoice.name;
-
-    if(!german.length){
-      setWarn("No German voices detected. It can still speak using a generic voice.<br><b>Fix:</b> Install a German voice on your device:<ul><li><b>Windows</b>: Settings → Time & Language → Language → Add language (German), then restart the browser.</li><li><b>macOS/iOS</b>: Settings → Accessibility → Spoken Content → Voices → German (download one), ensure Silent Mode is off on iPhone.</li><li><b>Android</b>: Settings → System → Languages & input → Text-to-speech → Install German voice.</li></ul>");
-    } else {
-      clearWarn();
-    }
   }
-
   function ensureVoicesReady(){
     return new Promise(resolve => {
       listVoices();
       if(voices.length) return resolve();
       let tries = 0;
       const id = setInterval(() => {
-        tries++;
-        listVoices();
+        tries++; listVoices();
         if(voices.length || tries > 20){ clearInterval(id); resolve(); }
       }, 100);
       if(typeof speechSynthesis.onvoiceschanged !== "undefined"){
@@ -698,19 +707,13 @@
       }
     });
   }
-
-  function pickVoice(){
-    currentVoice = voices.find(v => v.name === voiceSelect.value) || currentVoice;
-  }
-
+  function pickVoice(){ currentVoice = voices.find(v => v.name === voiceSelect.value) || currentVoice; }
   async function speak(text){
-    if(!("speechSynthesis" in window)){ setWarn("Speech Synthesis not supported in this browser.", false); return; }
-    speechSynthesis.cancel(); // stop any pending
+    if(!("speechSynthesis" in window)){ setWarn("Speech Synthesis not supported.", false); return; }
+    speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
     u.rate = Number(rate.value); u.pitch = Number(pitch.value);
-    // Prefer selected voice; otherwise set language hint to German
-    if(currentVoice){ u.voice = currentVoice; u.lang = currentVoice.lang || "de-DE"; }
-    else { u.lang = "de-DE"; }
+    if(currentVoice){ u.voice = currentVoice; u.lang = currentVoice.lang || "de-DE"; } else { u.lang = "de-DE"; }
     return new Promise(res => { u.onend = res; speechSynthesis.speak(u); });
   }
 
@@ -726,7 +729,6 @@
       });
     });
   }
-
   function updateGoalCount(){
     const n = Object.keys(goals).length;
     document.getElementById("goalCount").textContent = n + " selected";
@@ -746,7 +748,6 @@
   async function speakTimes(text, n){
     for(let i=0;i<n;i++){ if(!session.running||session.paused) return; await speak(text); await sleep(Number(gapMs.value)); }
   }
-
   async function runSession(){
     const ids = Object.keys(goals);
     session.list = data.filter(([de]) => ids.includes(encodeURIComponent(de)));
@@ -773,11 +774,15 @@
   voiceSelect.addEventListener("change", pickVoice);
   rate.addEventListener("input", () => rateVal.textContent = Number(rate.value).toFixed(2)+"×");
   pitch.addEventListener("input", () => pitchVal.textContent = Number(pitch.value).toFixed(2));
-  testVoice.addEventListener("click", async () => { await ensureVoicesReady(); await speak("Guten Tag! Das ist ein Test."); });
-  startBtn.addEventListener("click", async () => { await ensureVoicesReady(); session.running = false; speechSynthesis.cancel(); runSession(); });
-  pauseBtn.addEventListener("click", () => { session.paused = !session.paused; pauseBtn.textContent = session.paused ? "Resume ▶" : "Pause ⏸"; });
-  resetBtn.addEventListener("click", () => { session.running = false; session.paused = false; session.idx = 0; goalProg.textContent = ""; speechSynthesis.cancel(); });
-  stopAll.addEventListener("click", () => { session.running = false; session.paused = false; speechSynthesis.cancel(); pauseBtn.textContent = "Pause ⏸"; });
+  document.getElementById("testVoice").addEventListener("click", async () => { await ensureVoicesReady(); await speak("Guten Tag! Das ist ein Test."); });
+  document.getElementById("startGoal").addEventListener("click", async () => { await ensureVoicesReady(); session.running = false; speechSynthesis.cancel(); runSession(); });
+  document.getElementById("pauseGoal").addEventListener("click", () => { session.paused = !session.paused; document.getElementById("pauseGoal").textContent = session.paused ? "Resume ▶" : "Pause ⏸"; });
+  document.getElementById("resetGoal").addEventListener("click", () => { session.running = false; session.paused = false; session.idx = 0; goalProg.textContent = ""; speechSynthesis.cancel(); });
+  stopAll.addEventListener("click", () => { session.running = false; session.paused = false; speechSynthesis.cancel(); document.getElementById("pauseGoal").textContent = "Pause ⏸"; });
 </script>
 </body>
 </html>
+"""
+out = Path("/mnt/data/german_a1_vocab_units_goal_tts_fix_mobile.html")
+out.write_text(html, encoding="utf-8")
+out.as_posix()
