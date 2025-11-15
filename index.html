@@ -44,6 +44,36 @@
   .note{background:#2d2a00;color:#fff;border:1px dashed #8a6d00;padding:10px;border-radius:10px;margin:10px 0}
   .ok{background:#062d16;border:1px solid #0b6e3d}
 
+  /* Inline highlight (selected text) */
+  .inline-hl{border-radius:3px;padding:0 1px;}
+  .inline-hl-yellow{background:rgba(241,196,15,0.55);}
+  .inline-hl-green{background:rgba(46,204,113,0.55);}
+  .inline-hl-red{background:rgba(231,76,60,0.55);}
+
+  /* Popup for selection highlight */
+  .hl-popup{
+    position:absolute;
+    background:#111833;
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:4px 8px;
+    font-size:0.85rem;
+    z-index:100;
+    box-shadow:0 8px 20px rgba(0,0,0,0.5);
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .hl-popup button{
+    background:var(--btn);
+    border:1px solid var(--accent);
+    border-radius:6px;
+    color:var(--text);
+    cursor:pointer;
+    padding:2px 8px;
+    font-size:0.8rem;
+  }
+
   /* ===== Mobile responsiveness ===== */
   @media (max-width: 640px){
     .controls, .goalbar { gap: 6px; }
@@ -110,7 +140,7 @@
   <div class="card">
     <div class="toolbar">
       <input id="filter" type="search" placeholder="Filter... type 'goal:' to show only selected goals">
-      <span>Click ✓ to add/remove goals. Click 🔊 to pronounce.</span>
+      <span>Click ✓ to add/remove goals. Click 🔊 to pronounce. Select text to highlight.</span>
     </div>
     <table id="vocab">
       <thead>
@@ -120,7 +150,7 @@
     </table>
   </div>
 
-  <p class="badge">Selections are saved locally and the page works offline.</p>
+  <p class="badge">Selections are saved locally and the page works offline. Inline text highlights are not saved across reloads.</p>
 </div>
 
 <script>
@@ -633,6 +663,7 @@
       ["Wann bist du geboren?","When were you born?","Unit 7"],
       ["Wann ist er gestorben?","When did he die?","Unit 7"]
     ];
+
   const tbody = document.querySelector("tbody");
   const LS_KEY = "german_a1_goals_v1";
 
@@ -668,10 +699,24 @@
   const input = document.getElementById("filter");
   input.addEventListener("input", e => {
     const q = e.target.value.toLowerCase().trim();
-    let rows = data;
-    if(q.startsWith("goal")) rows = data.filter(([de]) => goals[encodeURIComponent(de)]);
-    else if(q) rows = data.filter(([de,en,u]) => de.toLowerCase().includes(q) || en.toLowerCase().includes(q) || u.toLowerCase().includes(q));
-    renderRows(rows);
+    const onlyGoals = q.startsWith("goal");
+    const rows = tbody.querySelectorAll("tr");
+
+    rows.forEach(row => {
+      const id = row.dataset.id;
+      const de = row.querySelector(".german").textContent.toLowerCase();
+      const en = row.querySelector(".english").textContent.toLowerCase();
+      const unit = row.querySelector(".unit") ? row.querySelector(".unit").textContent.toLowerCase() : "";
+
+      let show = true;
+      if (onlyGoals) {
+        show = !!goals[id];
+      } else if (q) {
+        show = de.includes(q) || en.includes(q) || unit.includes(q);
+      }
+
+      row.style.display = show ? "" : "none";
+    });
   });
 
   // --- TTS (same robust loader as before) ---
@@ -746,6 +791,93 @@
     document.getElementById("goalCount").textContent = n + " selected";
   }
 
+  // ===== Inline text selection highlight =====
+  let inlineColors = ["yellow","green","red"];
+  let inlineColorIndex = 0;
+  let hlPopup = null;
+
+  function hideHlPopup(){
+    if(hlPopup){
+      hlPopup.remove();
+      hlPopup = null;
+    }
+  }
+
+  function showHlPopup(x, y, onHighlight){
+    hideHlPopup();
+    hlPopup = document.createElement("div");
+    hlPopup.className = "hl-popup";
+
+    const colorName = inlineColors[inlineColorIndex];
+    const btn = document.createElement("button");
+    btn.textContent = "Highlight (" + colorName + ")";
+    btn.addEventListener("click", () => {
+      onHighlight();
+      hideHlPopup();
+      window.getSelection().removeAllRanges();
+    });
+
+    const cancel = document.createElement("button");
+    cancel.textContent = "Cancel";
+    cancel.addEventListener("click", () => {
+      hideHlPopup();
+      window.getSelection().removeAllRanges();
+    });
+
+    hlPopup.appendChild(btn);
+    hlPopup.appendChild(cancel);
+    hlPopup.style.left = x + "px";
+    hlPopup.style.top = y + "px";
+
+    document.body.appendChild(hlPopup);
+  }
+
+  // Hide popup when clicking elsewhere
+  document.addEventListener("mousedown", (e) => {
+    if(hlPopup && !hlPopup.contains(e.target)){
+      hideHlPopup();
+    }
+  });
+
+  document.addEventListener("mouseup", (e) => {
+    setTimeout(() => {
+      const sel = window.getSelection();
+      if(!sel || sel.isCollapsed || sel.rangeCount === 0){
+        hideHlPopup();
+        return;
+      }
+      const range = sel.getRangeAt(0);
+
+      // Only highlight text inside the vocab table
+      const table = document.getElementById("vocab");
+      const anc = range.commonAncestorContainer;
+      const containerEl = anc.nodeType === 1 ? anc : anc.parentNode;
+      if(!table.contains(containerEl)){
+        hideHlPopup();
+        return;
+      }
+
+      // For simplicity: only allow selection inside a single text node
+      if(range.startContainer !== range.endContainer){
+        hideHlPopup();
+        return;
+      }
+
+      const rect = range.getBoundingClientRect();
+      const x = rect.right + window.scrollX;
+      const y = rect.bottom + window.scrollY + 4;
+
+      showHlPopup(x, y, () => {
+        const span = document.createElement("span");
+        const color = inlineColors[inlineColorIndex];
+        inlineColorIndex = (inlineColorIndex + 1) % inlineColors.length;
+        span.className = "inline-hl inline-hl-" + color;
+        span.appendChild(range.extractContents());
+        range.insertNode(span);
+      });
+    }, 0);
+  });
+
   // Goal session
   const startBtn = document.getElementById("startGoal");
   const pauseBtn = document.getElementById("pauseGoal");
@@ -758,13 +890,21 @@
 
   function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
   async function speakTimes(text, n){
-    for(let i=0;i<n;i++){ if(!session.running||session.paused) return; await speak(text); await sleep(Number(gapMs.value)); }
+    for(let i=0;i<n;i++){
+      if(!session.running||session.paused) return;
+      await speak(text);
+      await sleep(Number(gapMs.value));
+    }
   }
   async function runSession(){
     const ids = Object.keys(goals);
     session.list = data.filter(([de]) => ids.includes(encodeURIComponent(de)));
     session.idx = 0; session.running = true; session.paused = false;
-    if(!session.list.length){ setWarn("No goals selected. Tick ✓ first.", false); session.running = false; return; }
+    if(!session.list.length){
+      setWarn("No goals selected. Tick ✓ first.", false);
+      session.running = false;
+      return;
+    }
     clearWarn();
     startBtn.textContent = "Restart Goal ▶";
     while(session.running && session.idx < session.list.length){
@@ -786,11 +926,25 @@
   voiceSelect.addEventListener("change", pickVoice);
   rate.addEventListener("input", () => rateVal.textContent = Number(rate.value).toFixed(2)+"×");
   pitch.addEventListener("input", () => pitchVal.textContent = Number(pitch.value).toFixed(2));
-  document.getElementById("testVoice").addEventListener("click", async () => { await ensureVoicesReady(); await speak("Guten Tag! Das ist ein Test."); });
-  document.getElementById("startGoal").addEventListener("click", async () => { await ensureVoicesReady(); session.running = false; speechSynthesis.cancel(); runSession(); });
-  document.getElementById("pauseGoal").addEventListener("click", () => { session.paused = !session.paused; document.getElementById("pauseGoal").textContent = session.paused ? "Resume ▶" : "Pause ⏸"; });
-  document.getElementById("resetGoal").addEventListener("click", () => { session.running = false; session.paused = false; session.idx = 0; goalProg.textContent = ""; speechSynthesis.cancel(); });
-  stopAll.addEventListener("click", () => { session.running = false; session.paused = false; speechSynthesis.cancel(); document.getElementById("pauseGoal").textContent = "Pause ⏸"; });
+  testVoice.addEventListener("click", async () => { await ensureVoicesReady(); await speak("Guten Tag! Das ist ein Test."); });
+  startBtn.addEventListener("click", async () => { await ensureVoicesReady(); session.running = false; speechSynthesis.cancel(); runSession(); });
+  pauseBtn.addEventListener("click", () => {
+    session.paused = !session.paused;
+    pauseBtn.textContent = session.paused ? "Resume ▶" : "Pause ⏸";
+  });
+  resetBtn.addEventListener("click", () => {
+    session.running = false;
+    session.paused = false;
+    session.idx = 0;
+    goalProg.textContent = "";
+    speechSynthesis.cancel();
+  });
+  stopAll.addEventListener("click", () => {
+    session.running = false;
+    session.paused = false;
+    speechSynthesis.cancel();
+    pauseBtn.textContent = "Pause ⏸";
+  });
 </script>
 </body>
 </html>
