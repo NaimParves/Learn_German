@@ -44,11 +44,6 @@
   .note{background:#2d2a00;color:#fff;border:1px dashed #8a6d00;padding:10px;border-radius:10px;margin:10px 0}
   .ok{background:#062d16;border:1px solid #0b6e3d}
 
-  /* Highlight colors for mode A */
-  tbody tr.hl-yellow td{background:rgba(241,196,15,0.14);}
-  tbody tr.hl-green td{background:rgba(46,204,113,0.16);}
-  tbody tr.hl-red td{background:rgba(231,76,60,0.16);}
-
   /* ===== Mobile responsiveness ===== */
   @media (max-width: 640px){
     .controls, .goalbar { gap: 6px; }
@@ -116,7 +111,6 @@
     <div class="toolbar">
       <input id="filter" type="search" placeholder="Filter... type 'goal:' to show only selected goals">
       <span>Click ✓ to add/remove goals. Click 🔊 to pronounce.</span>
-      <button id="toggleHighlightMode" class="btn warn" type="button">Highlight Mode ✨</button>
     </div>
     <table id="vocab">
       <thead>
@@ -126,7 +120,7 @@
     </table>
   </div>
 
-  <p class="badge">Selections and highlights are saved locally and the page works offline.</p>
+  <p class="badge">Selections are saved locally and the page works offline.</p>
 </div>
 
 <script>
@@ -639,18 +633,12 @@
       ["Wann bist du geboren?","When were you born?","Unit 7"],
       ["Wann ist er gestorben?","When did he die?","Unit 7"]
     ];
-
   const tbody = document.querySelector("tbody");
   const LS_KEY = "german_a1_goals_v1";
-  const LS_HL_KEY = "german_a1_highlights_v1";
 
   function loadGoals(){ try {return JSON.parse(localStorage.getItem(LS_KEY))||{}} catch{ return {}; } }
   function saveGoals(m){ localStorage.setItem(LS_KEY, JSON.stringify(m)); }
-  function loadHighlights(){ try {return JSON.parse(localStorage.getItem(LS_HL_KEY))||{}} catch{ return {}; } }
-  function saveHighlights(m){ localStorage.setItem(LS_HL_KEY, JSON.stringify(m)); }
-
   let goals = loadGoals();
-  let highlights = loadHighlights();
 
   function iconSVG(){ return `<svg viewBox="0 0 24 24" aria-hidden="true">
     <path d="M3 10v4h3l4 4V6L6 10H3z"></path>
@@ -661,9 +649,7 @@
   function rowTemplate([de,en,unit]){
     const id = encodeURIComponent(de);
     const checked = goals[id] ? "checked" : "";
-    const hl = highlights[id] || "";
-    const hlClass = hl ? ` hl-${hl}` : "";
-    return `<tr data-id="${id}" class="${hlClass}">
+    return `<tr data-id="${id}">
       <td style="text-align:center"><input type="checkbox" class="goalcb" ${checked} aria-label="Mark goal: ${de}"></td>
       <td style="text-align:center"><button class="speak" type="button" data-text="${de}" aria-label="Pronounce: ${de}">${iconSVG()}</button></td>
       <td class="german">${de}</td>
@@ -675,7 +661,6 @@
   function renderRows(rows){
     tbody.innerHTML = rows.map(rowTemplate).join("");
     bindRows();
-    bindHighlighting();
     updateGoalCount();
   }
   renderRows(data);
@@ -684,26 +669,12 @@
   input.addEventListener("input", e => {
     const q = e.target.value.toLowerCase().trim();
     let rows = data;
-    if(q.startsWith("goal")) {
-      rows = data.filter(([de]) => goals[encodeURIComponent(de)]);
-    } else if(q) {
-      rows = data.filter(([de,en,u]) =>
-        de.toLowerCase().includes(q) ||
-        en.toLowerCase().includes(q) ||
-        u.toLowerCase().includes(q)
-      );
-    }
+    if(q.startsWith("goal")) rows = data.filter(([de]) => goals[encodeURIComponent(de)]);
+    else if(q) rows = data.filter(([de,en,u]) => de.toLowerCase().includes(q) || en.toLowerCase().includes(q) || u.toLowerCase().includes(q));
     renderRows(rows);
-
-    // Auto highlight filtered matches (search highlight, separate from colored highlights)
-    if (q && !q.startsWith("goal")) {
-      document.querySelectorAll("tbody tr").forEach(row => {
-        row.classList.add("highlight");
-      });
-    }
   });
 
-  // --- TTS ---
+  // --- TTS (same robust loader as before) ---
   const voiceSelect = document.getElementById("voiceSelect");
   const testVoice = document.getElementById("testVoice");
   const rate = document.getElementById("rate"), pitch = document.getElementById("pitch");
@@ -775,46 +746,6 @@
     document.getElementById("goalCount").textContent = n + " selected";
   }
 
-  // ===== Highlight Mode (Option A: yellow/green/red, one color per row) =====
-  let highlightMode = false;
-  const toggleHighlightModeBtn = document.getElementById("toggleHighlightMode");
-
-  toggleHighlightModeBtn.addEventListener("click", () => {
-    highlightMode = !highlightMode;
-    toggleHighlightModeBtn.textContent = highlightMode ? "Highlighting ON ✨" : "Highlight Mode ✨";
-  });
-
-  function nextHighlight(current){
-    if(!current) return "yellow";
-    if(current === "yellow") return "green";
-    if(current === "green") return "red";
-    return null; // after red -> none
-  }
-
-  function bindHighlighting(){
-    document.querySelectorAll("tbody tr").forEach(row => {
-      row.addEventListener("click", (e) => {
-        // Ignore clicks on checkbox and speaker button
-        if (e.target.closest("button") || e.target.closest("input")) return;
-        if (!highlightMode) return;
-
-        const id = row.dataset.id;
-        const current = highlights[id] || null;
-        const next = nextHighlight(current);
-
-        row.classList.remove("hl-yellow","hl-green","hl-red");
-
-        if (next) {
-          row.classList.add("hl-" + next);
-          highlights[id] = next;
-        } else {
-          delete highlights[id];
-        }
-        saveHighlights(highlights);
-      });
-    });
-  }
-
   // Goal session
   const startBtn = document.getElementById("startGoal");
   const pauseBtn = document.getElementById("pauseGoal");
@@ -827,21 +758,13 @@
 
   function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
   async function speakTimes(text, n){
-    for(let i=0;i<n;i++){
-      if(!session.running||session.paused) return;
-      await speak(text);
-      await sleep(Number(gapMs.value));
-    }
+    for(let i=0;i<n;i++){ if(!session.running||session.paused) return; await speak(text); await sleep(Number(gapMs.value)); }
   }
   async function runSession(){
     const ids = Object.keys(goals);
     session.list = data.filter(([de]) => ids.includes(encodeURIComponent(de)));
     session.idx = 0; session.running = true; session.paused = false;
-    if(!session.list.length){
-      setWarn("No goals selected. Tick ✓ first.", false);
-      session.running = false;
-      return;
-    }
+    if(!session.list.length){ setWarn("No goals selected. Tick ✓ first.", false); session.running = false; return; }
     clearWarn();
     startBtn.textContent = "Restart Goal ▶";
     while(session.running && session.idx < session.list.length){
@@ -863,25 +786,11 @@
   voiceSelect.addEventListener("change", pickVoice);
   rate.addEventListener("input", () => rateVal.textContent = Number(rate.value).toFixed(2)+"×");
   pitch.addEventListener("input", () => pitchVal.textContent = Number(pitch.value).toFixed(2));
-  testVoice.addEventListener("click", async () => { await ensureVoicesReady(); await speak("Guten Tag! Das ist ein Test."); });
-  startBtn.addEventListener("click", async () => { await ensureVoicesReady(); session.running = false; speechSynthesis.cancel(); runSession(); });
-  pauseBtn.addEventListener("click", () => {
-    session.paused = !session.paused;
-    pauseBtn.textContent = session.paused ? "Resume ▶" : "Pause ⏸";
-  });
-  resetBtn.addEventListener("click", () => {
-    session.running = false;
-    session.paused = false;
-    session.idx = 0;
-    goalProg.textContent = "";
-    speechSynthesis.cancel();
-  });
-  stopAll.addEventListener("click", () => {
-    session.running = false;
-    session.paused = false;
-    speechSynthesis.cancel();
-    pauseBtn.textContent = "Pause ⏸";
-  });
+  document.getElementById("testVoice").addEventListener("click", async () => { await ensureVoicesReady(); await speak("Guten Tag! Das ist ein Test."); });
+  document.getElementById("startGoal").addEventListener("click", async () => { await ensureVoicesReady(); session.running = false; speechSynthesis.cancel(); runSession(); });
+  document.getElementById("pauseGoal").addEventListener("click", () => { session.paused = !session.paused; document.getElementById("pauseGoal").textContent = session.paused ? "Resume ▶" : "Pause ⏸"; });
+  document.getElementById("resetGoal").addEventListener("click", () => { session.running = false; session.paused = false; session.idx = 0; goalProg.textContent = ""; speechSynthesis.cancel(); });
+  stopAll.addEventListener("click", () => { session.running = false; session.paused = false; speechSynthesis.cancel(); document.getElementById("pauseGoal").textContent = "Pause ⏸"; });
 </script>
 </body>
 </html>
